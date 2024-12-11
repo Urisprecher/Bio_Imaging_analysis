@@ -22,4 +22,9 @@
   - Data imputation and normalization step - includes imputation based on median values and normalization using - z score, min-max, central log, logarithmic scale, box-cox, Q-Q plots and histograms will be genertaed for each method.
   - Choice of normalization method to end analysis. 
 * A dashobard will be generated to simplify the examination of results.
-  ### Output data is optimized for statistics and final visualzation.  
+  ### Output data is optimized for statistics and final visualzation.
+
+
+
+## Refernces : 
+- 
