@@ -10,5 +10,16 @@
 * Data processing and main analysis step, this includes -
   - Creating multiple indexes based on the index columns ( all possible combination of indexes )
   - Option to remove values based on different columns, removing specific cell ids based on cell_id and to remove additional columns if needed.
-  - 
-* 
+  - Creating statistical summary based on chosen index & removal of rows based on cell count
+  - Creating box plots for each feature based on chosen index
+  - creating an excel & ppt file for each group ( cell_type, compund, concentartion)
+  - Creating a heatmap and pca's based on chosen index.
+  - Outlier detection based on chosen index and based on one of four methods - z score, iqr, percintiles or Local outlier factor.
+  - Choice of downstreram index columns
+  - Feature quality control based on random forest scoring, coefficient of variation and correlations.
+  - Option to rename feature names.
+  - For timelapse data, timelapse plots will be generated based on chosen index
+  - Data imputation and normalization step - includes imputation based on median values and normalization using - z score, min-max, central log, logarithmic scale, box-cox, Q-Q plots and histograms will be genertaed for each method.
+  - Choice of normalization method to end analysis. 
+* A dashobard will be generated to simplify the examination of results.
+  ### Output data is optimized for statistics and final visualzation.  
