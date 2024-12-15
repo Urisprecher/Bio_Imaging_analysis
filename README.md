@@ -27,4 +27,9 @@
 
 
 ## Refernces : 
+- Caicedo et al. Data-analysis strategies for image-based cell profiling.
+- Pedregosa et al. Scikit-learn: Machine Learning in Python.
+- Virtanen et al. SciPy 1.0: fundamental algorithms for scientific computing in Python.
+- Breunig et al. LOF: Identifying Density-Based Local Outliers.
 - 
+
