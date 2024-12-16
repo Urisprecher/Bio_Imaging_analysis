@@ -1,6 +1,6 @@
 # <ins>Bio_imaging_data_analysis</ins>
 ## This respiratory contains scripts generated for analysing image-based tabular data.
-### 4 scripts are available - per plate will work on each plate separately, combine plates will combine the plate and then run the analysis and timelapse scripts will work with the same logic but for timelapse data. 
+### 4 scripts are available - per plate will work on each plate separately, combine plates will combine the plate and then run the analysis on a merged file. Timelapse scripts will work with the same logic but for timelapse experiments data. 
 ### All scripts take as input a main folder with a file folder in it with txt files - see file examples above. 
 ### All output files will be saved in the main folder.
 ### Analysis steps include : 
@@ -24,12 +24,9 @@
 * A dashobard will be generated to simplify the examination of results.
   ### Output data is optimized for statistics and final visualzation.
 
-
-
-## Refernces : 
+## References : 
 - Caicedo et al. Data-analysis strategies for image-based cell profiling.
 - Pedregosa et al. Scikit-learn: Machine Learning in Python.
 - Virtanen et al. SciPy 1.0: fundamental algorithms for scientific computing in Python.
-- Breunig et al. LOF: Identifying Density-Based Local Outliers.
-- 
+- Breunig et al. LOF: Identifying Density-Based Local Outliers. 
 
