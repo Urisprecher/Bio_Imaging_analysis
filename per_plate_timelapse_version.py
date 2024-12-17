@@ -1,4 +1,11 @@
-##IF - ## time lapse
+##IF - ## time lapse per plate
+## takes as input a folder that includes an additional folder inside it with txt files
+## there should be numeric features in these files & index columns
+## must index columns are - cell_type, cell_id, compound, concentration
+## Timepoint column should indicate different timepoints.
+## follow the steps until a final normalized data frame ready for statistics will be generated.
+## all output files will be saved in the main folder including all steps in the analysis, in addition a dashboard with the main results will be saved.
+## all text files will be analyzed separately.
 ## libraries
 import pandas as pd
 import numpy as np
@@ -26,7 +33,6 @@ import logging
 from sklearn.decomposition import PCA
 from colorama import Fore, Style, init
 init(autoreset=True)
-## per plate
 #logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 def process_folders(main_folder):
@@ -865,23 +871,38 @@ def process_plate_data_on_folders(main_folder, unwanted_columns, important_featu
                             t_plot_df.to_csv(processed_file_path)
                             print(f"Time_point data saved to {processed_file_path}")
                             #Plotting
-                            print("Plotting began")
+                            print("Plotting each important feature...")
                             if timepoint_col in t_plot_df.columns:
                                 #Timepoint column is numeric?
                                 t_plot_df[timepoint_col] = pd.to_numeric(t_plot_df[timepoint_col], errors='coerce')
                                 for col in numeric_cols:
                                     if col == timepoint_col:
                                         continue
+                                    # Skip the column if all values are zero
+                                    if (t_plot_df[col] == 0).all():
+                                        print(f"Skipping {col} as it contains only zeros.")
+                                        continue
+                                    print(col)
+                                    #handling zero values
+                                    zero_count = (t_plot_df[col] == 0).sum()
+                                    if zero_count > 0:
+                                        print(
+                                            f"Handling {zero_count} zero values in column {col} - replacing with NaN.")
+                                        t_plot_df[col] = t_plot_df[col].replace(0, np.nan)
+                                    #drop rows with NaN values for column
+                                    t_plot_df.dropna(subset=[col], inplace=True)
                                     #seaborn
+                                    #
                                     plt.figure(figsize=(12, 8))
                                     sns.lineplot(data=t_plot_df, x=timepoint_col, y=col, hue=t_plot_df.index,
-                                                 estimator='mean', ci=95)
+                                                 estimator='mean', errorbar=('ci', 95))
                                     plt.title(f'{col} over Timepoints')
                                     plt.xlabel('Timepoint')
                                     plt.ylabel(col)
                                     sns_plot_path = os.path.join(time_plots_dir, f'seaborn_plot_{col}.png')
                                     plt.savefig(sns_plot_path)
                                     plt.close()
+                                    print("one down!")
                                     # Plot using Plotly
                                     fig = px.line(t_plot_df.reset_index(), x=timepoint_col, y=col, color=index_col_main,
                                                   line_group=index_col_main, title=f'{col} over Timepoints',
@@ -889,9 +910,10 @@ def process_plate_data_on_folders(main_folder, unwanted_columns, important_featu
                                     fig.update_traces(marker=dict(size=10))
                                     plotly_plot_path = os.path.join(time_plots_dir, f'plotly_plot_{col}.html')
                                     fig.write_html(plotly_plot_path)
+                                    print("one down!")
                         except Exception as e:
                             logging.error(f"Failed to create timepoint plots...{e}")
-
+                        print("Finished plotting time_plots!")
                         print("ready_for_norm!")
                         #imputation and mormalization segment
                         try:
@@ -1002,18 +1024,18 @@ def process_plate_data_on_folders(main_folder, unwanted_columns, important_featu
                                             ## qq
                                             plt.figure()
                                             scipy.stats.probplot(df[feature], dist="norm", plot=plt)
-                                            plt.title(f"Q-Q-{feature}")
+                                            plt.title(f"QQ for {feature}")
                                             qq_plot_path_2 = os.path.join(df_dir, f"qq_2_plot_{feature}.png")
                                             plt.savefig(qq_plot_path_2)
                                             plt.close()
                                             plt.clf()
                                         except Exception as e:
-                                            logging.error(f"Error plotting Q-Q for {feature} in {df_name}: {e}")
+                                            logging.error(f"Error plotting QQ for {feature} : {e}")
                                         # histogram
                                         try:
                                             plt.figure(figsize=(18, 12))
                                             sns.histplot(df[feature], bins=20, kde=True, color='skyblue')
-                                            plt.title(f"Histogram for {feature} ({df_name})")
+                                            plt.title(f"Histogram for {feature} ")
                                             plt.xlabel("Value")
                                             plt.ylabel("Frequency")
                                             plt.tight_layout()
@@ -1022,7 +1044,7 @@ def process_plate_data_on_folders(main_folder, unwanted_columns, important_featu
                                             plt.close()
                                             logging.info(f"Histogram saved to: {histogram_path}")
                                         except Exception as e:
-                                            logging.error(f"Error plotting histogram for {feature} in {df_name}: {e}")
+                                            logging.error(f"Error plotting histogram for {feature} : {e}")
                             #user to select the normalized data frame to continue with
                             try:
                                 normalized_options = ["min-max_normalization", "central_log_normalization",
@@ -1078,7 +1100,9 @@ def process_plate_data_on_folders(main_folder, unwanted_columns, important_featu
                                 results_folder = os.path.join(item_path, f"results_{file_name}_res")
                                 barplot_dir = os.path.join(results_folder, "box_plots")
                                 summary_dir = os.path.join(results_folder, "general_results")
+                                timeplots_dir = os.path.join(results_folder, "time_plots")
                                 barplot_relative_path = os.path.relpath(barplot_dir, main_results_dir)
+                                timeplot_relative_path = os.path.relpath(timeplots_dir, main_results_dir)
                                 summary_relative_path = os.path.relpath(summary_dir, main_results_dir)
                                 dashboard_content += f"<h3>Results for Plate: {file_name}</h3>"
                                 dashboard_content += "<ul>"
@@ -1086,7 +1110,10 @@ def process_plate_data_on_folders(main_folder, unwanted_columns, important_featu
                                 for feature in important_features:
                                     bar_plot_html = os.path.join(barplot_relative_path, f'{feature}_bar_plot.html')
                                     dashboard_content += f'<li><a href="{bar_plot_html}">Bar Plot for {feature}</a></li>'
-
+                                ## time lapse plots
+                                for col in important_features:
+                                    time_plot_html = os.path.join(timeplot_relative_path, f'plotly_plot_{col}.html')
+                                    dashboard_content += f'<li><a href="{time_plot_html}">Time Plot for {col}</a></li>'
                                 #pca
                                 pca_plot_html_id = os.path.join(summary_relative_path, f'pca_plot_with_id_{file_name[:-4]}.html')
                                 dashboard_content += f'<li><a href="{pca_plot_html_id}">PCA Plot for {file_name}</a></li>'

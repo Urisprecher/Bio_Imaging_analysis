@@ -1,4 +1,11 @@
 ##IF - ## combined plates timelapse
+## takes as input a folder that includes an additional folder inside it with txt files
+## there should be numeric features in these files & index columns
+## must index columns are - cell_type, cell_id, compound, concentration
+## Timepoint column should indicate different timepoints.
+## follow the steps until a final normalized data frame ready for statistics will be generated.
+## all output files will be saved in the main folder including all steps in the analysis, in addition a dashboard with the main results will be saved.
+## all text files will be merged and analyzed.
 ## libraries
 import pandas as pd
 import numpy as np
@@ -192,13 +199,13 @@ def process_plate_data_on_folders(main_folder, unwanted_columns, important_featu
                             logging.error("well column does not exists yet, creating now...")
                         #create well column and update index_columns
                         try:
-                            print("These are the index columns chosen for the analysis:")
                             print(index_columns)
+                            plate_df['well'] = plate_df['Row'].astype(str) + plate_df['Column'].astype(str)+ plate_df['Timepoint'].astype('str')
+                            plate_df['well'] = plate_df['well'].astype(str)
                             index_columns.append('well')
-                            index_columns.append('plate')
-                            logging.info("'well' & 'plate' columns added to index_columns.")
+                            logging.info("Created 'well' column and updated index_columns.")
                         except Exception as e:
-                            logging.error(f"Error adding 'well' and 'plate' columns to index columns: {e}")
+                            logging.error(f"Error creating 'well' column: {e}")
                         #generate combinations of index_columns for new indexes
                         try:
                             new_index_columns = []
@@ -559,6 +566,7 @@ def process_plate_data_on_folders(main_folder, unwanted_columns, important_featu
                         for col in plate_df_2.columns:
                             if col in index_columns:
                                 plate_df_2[col] = plate_df_2[col].astype(str)
+                        #index_columns = [str(element) for element in index_columns]
                         try:
                             perform_outlier_detection = input(
                                 "Do you want to perform outlier detection? (yes/no): ").strip().lower()
@@ -733,11 +741,11 @@ def process_plate_data_on_folders(main_folder, unwanted_columns, important_featu
                         final_file_path = os.path.join(results_folder, 'final_filtered_data(post outlier detection).csv')
                         out_dat.to_csv(final_file_path, index=False)
                         print("Final filtered DataFrame saved to", final_file_path)
-                        #prompting index column for final proc- "PC" & Timepoint is must!
+                        #prompting index column for final proc- "PC" is must!
                         print(out_dat.columns)
                         #columns to set as indexes
                         try:
-                            print(Fore.RED + "==== Please make sure you choose all needed indexes, PC & Timepoint are must! ====")
+                            print(Fore.RED + "==== Please make sure you choose all needed index columns - PC & Timepoint are must! ====")
                             columns_to_set_index = input("Enter ALL needed columns to set as indexes -PC & Timepoint IS MUST! (comma-separated): ").split(',')
                             columns_to_set_index = [col.strip() for col in columns_to_set_index if col.strip()]
                             logging.info(f"Columns to set as index: {columns_to_set_index}")
@@ -893,19 +901,33 @@ def process_plate_data_on_folders(main_folder, unwanted_columns, important_featu
                             numeric_cols = t_plot_df.select_dtypes(include=[np.number]).columns
                             # numeric_cols = numeric_cols.drop(timepoint_col)
                             t_plot_df[numeric_cols] = np.log1p(t_plot_df[numeric_cols])
-                            # Save the processed DataFrame
+                            #save processed DF
                             processed_file_path = os.path.join(time_plots_dir, 'time_plot_data.csv')
                             t_plot_df.to_csv(processed_file_path)
                             print(f"Time_point data saved to {processed_file_path}")
                             #Plotting
-                            print("Plotting began")
+                            print("Plotting each important feature...")
                             if timepoint_col in t_plot_df.columns:
                                 #Timepoint column is numeric?
                                 t_plot_df[timepoint_col] = pd.to_numeric(t_plot_df[timepoint_col], errors='coerce')
                                 for col in numeric_cols:
                                     if col == timepoint_col:
                                         continue
+                                    # Skip the column if all values are zero
+                                    if (t_plot_df[col] == 0).all():
+                                        print(f"Skipping {col} as it contains only zeros.")
+                                        continue
+                                    print(col)
+                                    #handling zero values
+                                    zero_count = (t_plot_df[col] == 0).sum()
+                                    if zero_count > 0:
+                                        print(
+                                            f"Handling {zero_count} zero values in column {col} - replacing with NaN.")
+                                        t_plot_df[col] = t_plot_df[col].replace(0, np.nan)
+                                    #drop rows with NaN values for column
+                                    t_plot_df.dropna(subset=[col], inplace=True)
                                     #seaborn
+                                    #
                                     plt.figure(figsize=(12, 8))
                                     sns.lineplot(data=t_plot_df, x=timepoint_col, y=col, hue=t_plot_df.index,
                                                  estimator='mean', errorbar=('ci', 95))
@@ -915,7 +937,7 @@ def process_plate_data_on_folders(main_folder, unwanted_columns, important_featu
                                     sns_plot_path = os.path.join(time_plots_dir, f'seaborn_plot_{col}.png')
                                     plt.savefig(sns_plot_path)
                                     plt.close()
-                                    plt.clf()
+                                    print("one down!")
                                     # Plot using Plotly
                                     fig = px.line(t_plot_df.reset_index(), x=timepoint_col, y=col, color=index_col_main,
                                                   line_group=index_col_main, title=f'{col} over Timepoints',
@@ -923,8 +945,10 @@ def process_plate_data_on_folders(main_folder, unwanted_columns, important_featu
                                     fig.update_traces(marker=dict(size=10))
                                     plotly_plot_path = os.path.join(time_plots_dir, f'plotly_plot_{col}.html')
                                     fig.write_html(plotly_plot_path)
+                                    print("one down!")
                         except Exception as e:
                             logging.error(f"Failed to create timepoint plots...{e}")
+                        print("Finished plotting time_plots!")
                         print("ready_for_norm!")
                         #imputation and mormalization segment
                         try:
@@ -1035,28 +1059,27 @@ def process_plate_data_on_folders(main_folder, unwanted_columns, important_featu
                                             ## qq
                                             plt.figure()
                                             scipy.stats.probplot(df[feature], dist="norm", plot=plt)
-                                            plt.title(f"Q-Q-{feature}")
+                                            plt.title(f"QQ for {feature}")
                                             qq_plot_path_2 = os.path.join(df_dir, f"qq_2_plot_{feature}.png")
                                             plt.savefig(qq_plot_path_2)
                                             plt.close()
                                             plt.clf()
                                         except Exception as e:
-                                            logging.error(f"Error plotting Q-Q for {feature} in {df_name}: {e}")
+                                            logging.error(f"Error plotting QQ for {feature} : {e}")
                                         # histogram
                                         try:
                                             plt.figure(figsize=(18, 12))
                                             sns.histplot(df[feature], bins=20, kde=True, color='skyblue')
-                                            plt.title(f"Histogram for {feature} ({df_name})")
+                                            plt.title(f"Histogram for {feature} ")
                                             plt.xlabel("Value")
                                             plt.ylabel("Frequency")
                                             plt.tight_layout()
                                             histogram_path = os.path.join(df_dir, f"histogram_{feature}.png")
                                             plt.savefig(histogram_path)
                                             plt.close()
-                                            plt.clf()
                                             logging.info(f"Histogram saved to: {histogram_path}")
                                         except Exception as e:
-                                            logging.error(f"Error plotting histogram for {feature} in {df_name}: {e}")
+                                            logging.error(f"Error plotting histogram for {feature} : {e}")
                             #user to select the normalized data frame to continue with
                             try:
                                 normalized_options = ["min-max_normalization", "central_log_normalization",
@@ -1112,7 +1135,9 @@ def process_plate_data_on_folders(main_folder, unwanted_columns, important_featu
                                 results_folder = os.path.join(item_path, f"results_{file_name}_res")
                                 barplot_dir = os.path.join(results_folder, "box_plots")
                                 summary_dir = os.path.join(results_folder, "general_results")
+                                timeplots_dir = os.path.join(results_folder, "time_plots")
                                 barplot_relative_path = os.path.relpath(barplot_dir, main_results_dir)
+                                timeplot_relative_path = os.path.relpath(timeplots_dir, main_results_dir)
                                 summary_relative_path = os.path.relpath(summary_dir, main_results_dir)
                                 dashboard_content += f"<h3>Results for Plate: {file_name}</h3>"
                                 dashboard_content += "<ul>"
@@ -1120,6 +1145,10 @@ def process_plate_data_on_folders(main_folder, unwanted_columns, important_featu
                                 for feature in important_features:
                                     bar_plot_html = os.path.join(barplot_relative_path, f'{feature}_bar_plot.html')
                                     dashboard_content += f'<li><a href="{bar_plot_html}">Bar Plot for {feature}</a></li>'
+                                ## time lapse plots
+                                for col in important_features:
+                                    time_plot_html = os.path.join(timeplot_relative_path, f'plotly_plot_{col}.html')
+                                    dashboard_content += f'<li><a href="{time_plot_html}">Time Plot for {col}</a></li>'
                                 #pca
                                 pca_plot_html_id = os.path.join(summary_relative_path, f'pca_plot_with_id_{file_name[:-4]}.html')
                                 dashboard_content += f'<li><a href="{pca_plot_html_id}">PCA Plot for {file_name}</a></li>'
