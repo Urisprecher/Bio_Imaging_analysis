@@ -35,6 +35,8 @@ import matplotlib.patches as mpatches
 from colorama import Fore, Style, init
 init(autoreset=True)
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+
+
 def process_folders(main_folder):
     try:
         #check main folder
@@ -489,7 +491,7 @@ def process_plate_data_on_folders(main_folder, unwanted_columns, important_featu
                                 'Color': color_labels_wo_id
                             })
                             fig = px.scatter(pca_df1, x='PC1', y='PC2', color='Label',
-                                             title=f'PCA Plot for All Numeric Features without CELL ID - {file_name}',
+                                             title=f'PCA Plot for All Numeric Features without CELL ID - {file_name}', hover_data=['cell_id'],
                                              color_continuous_scale='viridis')
                             fig.update_layout(legend_title='Cell Type, Compound, Concentration')
                             fig.add_annotation(text=f'Explained Variance Ratio: {pca.explained_variance_ratio_}', xref='paper',
@@ -512,7 +514,7 @@ def process_plate_data_on_folders(main_folder, unwanted_columns, important_featu
                                 'Color': color_labels_with_id
                             })
                             fig = px.scatter(pca_df2, x='PC1', y='PC2', color='Label',
-                                             title=f'PCA Plot for All Numeric Features with CELL ID - {file_name}',
+                                             title=f'PCA Plot for All Numeric Features with CELL ID - {file_name}', hover_data=['well'],
                                              color_continuous_scale='viridis')
                             fig.update_layout(legend_title='Cell Type, Compound, Concentration, ID')
                             fig.add_annotation(text=f'Explained Variance Ratio: {pca.explained_variance_ratio_}', xref='paper',
@@ -522,6 +524,22 @@ def process_plate_data_on_folders(main_folder, unwanted_columns, important_featu
                         except Exception as e:
                             logging.error(f"PCA failed: {e}")
                         print("Created pcas with and without ID")
+                        ## imp bar plots-
+                        print("Preparing importance bar plot for Components")
+                        for comp in range(2):
+                            # Bar plots for top 10 importance features each PC
+                            # top 10 important features
+                            top_10_indices = np.argsort(np.abs(pca.components_[comp]))[-10:]
+                            top_10_features = numeric_features.columns[top_10_indices]
+                            top_10_importance = np.abs(pca.components_[comp][top_10_indices])
+                            plt.figure(figsize=(32, 12))
+                            plt.yticks(family='Arial', rotation="horizontal", size=4)
+                            plt.barh(top_10_features, top_10_importance, color='skyblue')
+                            plt.xlabel("PCA Feature Importance")
+                            plt.title(f"Top 10 Important Features for PCA - PC{comp + 1}")
+                            plt.tight_layout()
+                            plt.savefig(os.path.join(general_results_dir, f"pca_top_10_features_PC{comp + 1}.pdf"))
+                            plt.close()
                         #fig.write_image(os.path.join(general_results_dir, f'pca_plot_with_id2.pdf'), engine="kaleido")
                         #directory for outlier results
                         outlier_files_dir = os.path.join(results_folder, "outlier_files")
@@ -1093,7 +1111,7 @@ def gather_user_lists():
 def main(main_folder, main_folder_path):
     print(Fore.GREEN + "Starting IF analysis for each plate in in folder in your main directory:)")
     print(Fore.GREEN + "STEP 1 - processing text files...")
-    process_folders(main_folder)
+    #process_folders(main_folder)
     prompt_for_review()
     print(Fore.GREEN + "STEP 2 - choosing column names for analysis...")
     print(Fore.RED + "==== Please make sure you choose correct column names! ====")
@@ -1107,6 +1125,12 @@ def main(main_folder, main_folder_path):
 if __name__ == "__main__":
     main_folder = input("Enter the folder name(this folder should contain a folder or more with raw txt files):")
     main_folder_path = input("Enter the folder name/results ")
+    exp_title = input("Enter a title for your experiment( i.e. - IF_disease_x) ")
+    filename = f"{exp_title}.txt"
+    # empty file
+    with open(filename, "w") as f:
+        pass
+    # ppen using default text editor
+    os.startfile(filename)
+    print("Please document your chosen parameters for the analysis and save at the end...")
     main(main_folder, main_folder_path)
-
-
